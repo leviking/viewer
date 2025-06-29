@@ -124,6 +124,56 @@ int main(void) {
                 fullViewIndex = -1;
             }
 
+            // Handle navigation keys
+            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_L)) {
+                // Next image
+                int next = (fullViewIndex + 1) % imageCount;
+            
+                // Clean up current
+                if (images[fullViewIndex].fullTextureLoaded) {
+                    UnloadTexture(images[fullViewIndex].fullTexture);
+                    images[fullViewIndex].fullTextureLoaded = false;
+                }
+                if (images[fullViewIndex].fullLoaded) {
+                    UnloadImage(images[fullViewIndex].fullImage);
+                    images[fullViewIndex].fullLoaded = false;
+                }
+            
+                // Load next
+                Image img = LoadImage(images[next].path);
+                if (img.data != NULL) {
+                    images[next].fullImage = img;
+                    images[next].fullLoaded = true;
+                    images[next].fullTexture = LoadTextureFromImage(img);
+                    images[next].fullTextureLoaded = true;
+                    fullViewIndex = next;
+                }
+            }
+            
+            if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_H)) {
+                // Previous image (wrap around)
+                int prev = (fullViewIndex - 1 + imageCount) % imageCount;
+            
+                if (images[fullViewIndex].fullTextureLoaded) {
+                    UnloadTexture(images[fullViewIndex].fullTexture);
+                    images[fullViewIndex].fullTextureLoaded = false;
+                }
+                if (images[fullViewIndex].fullLoaded) {
+                    UnloadImage(images[fullViewIndex].fullImage);
+                    images[fullViewIndex].fullLoaded = false;
+                }
+            
+                Image img = LoadImage(images[prev].path);
+                if (img.data != NULL) {
+                    images[prev].fullImage = img;
+                    images[prev].fullLoaded = true;
+                    images[prev].fullTexture = LoadTextureFromImage(img);
+                    images[prev].fullTextureLoaded = true;
+                    fullViewIndex = prev;
+                }
+            }
+            
+            
             EndDrawing();
             continue;
         }
