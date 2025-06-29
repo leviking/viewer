@@ -4,6 +4,9 @@
 
 #include <dirent.h>
 #include <string.h>
+#include <sys/stat.h>   // mkdir
+#include <unistd.h>     // access
+#include <string>
 
 #define THUMBNAIL_SIZE 128
 #define PADDING 16
@@ -25,6 +28,23 @@ bool HasImageExtension(const char *filename) {
     return (strcasecmp(ext, ".png") == 0 ||
             strcasecmp(ext, ".jpg") == 0 ||
             strcasecmp(ext, ".jpeg") == 0);
+}
+
+bool FileExistsSys(const char *path) {
+    return access(path, F_OK) != -1;
+}
+
+void EnsureDirectoryExists(const char *path) {
+    struct stat st = {0};
+    if (stat(path, &st) == -1) {
+        mkdir(path, 0755);
+    }
+}
+
+std::string GetThumbPath(const std::string &folder, const std::string &filename) {
+    std::string thumbDir = folder + "/.rayview_thumbs";
+    EnsureDirectoryExists(thumbDir.c_str());
+    return thumbDir + "/" + filename + "__thumb.png";
 }
 
 int LoadFolder(const char* folderPath, ImageEntry* images, int* outCount) {
@@ -79,12 +99,10 @@ int main(void) {
             images[fullViewIndex].fullTextureLoaded) {
 
             ClearBackground(BLACK);
-
             float scale = fmin(
                 (float)GetScreenWidth() / images[fullViewIndex].fullImage.width,
                 (float)GetScreenHeight() / images[fullViewIndex].fullImage.height
             );
-
             float w = images[fullViewIndex].fullImage.width * scale;
             float h = images[fullViewIndex].fullImage.height * scale;
             float x = (GetScreenWidth() - w) / 2;
@@ -110,7 +128,6 @@ int main(void) {
             continue;
         }
 
-        // Scroll input
         float wheel = GetMouseWheelMove();
         scrollY += wheel * 30;
         if (scrollY > 0) scrollY = 0;
@@ -121,7 +138,6 @@ int main(void) {
         if (scrollY < GetScreenHeight() - maxScroll - 50)
             scrollY = GetScreenHeight() - maxScroll - 50;
 
-        // Change Folder button
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
             if (mouse.x >= 10 && mouse.x <= 130 && mouse.y >= 10 && mouse.y <= 40) {
@@ -143,7 +159,6 @@ int main(void) {
 
         DrawRectangle(10, 10, 120, 30, LIGHTGRAY);
         DrawText("Change Folder", 20, 18, 12, DARKGRAY);
-
         DrawText(TextFormat("Loaded %d / %d", 
             [&]() {
                 int n = 0;
@@ -160,22 +175,36 @@ int main(void) {
             if (y + THUMBNAIL_SIZE < 0 || y > GetScreenHeight()) continue;
 
             if (!images[i].loaded && !loadedOneThisFrame) {
-                Image img = LoadImage(images[i].path);
-                if (img.data != NULL) {
-                    //ImageResize(&img, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
-                    images[i].texture = LoadTextureFromImage(img);
-                    UnloadImage(img);
-                    images[i].loaded = true;
+                std::string original = images[i].path;
+                std::string baseName = GetFileName(images[i].path);
+                std::string thumbPath = GetThumbPath(folder, baseName);
+
+                if (FileExistsSys(thumbPath.c_str())) {
+                    Image thumb = LoadImage(thumbPath.c_str());
+                    images[i].texture = LoadTextureFromImage(thumb);
+                    UnloadImage(thumb);
+                } else {
+                    Image full = LoadImage(images[i].path);
+                    if (full.data != NULL) {
+                        float scale = fminf(
+                            (float)THUMBNAIL_SIZE / full.width,
+                            (float)THUMBNAIL_SIZE / full.height
+                        );
+                        int w = full.width * scale;
+                        int h = full.height * scale;
+                        ImageResize(&full, w, h);
+                        ExportImage(full, thumbPath.c_str());
+                        images[i].texture = LoadTextureFromImage(full);
+                        UnloadImage(full);
+                    }
                 }
+                images[i].loaded = true;
                 loadedOneThisFrame = true;
             }
 
             if (images[i].loaded) {
-                // Draw square background
                 DrawRectangle(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, LIGHTGRAY);
 
-                
-                // Fit texture with aspect ratio inside square
                 float scale = fminf(
                     (float)THUMBNAIL_SIZE / images[i].texture.width,
                     (float)THUMBNAIL_SIZE / images[i].texture.height
@@ -184,10 +213,10 @@ int main(void) {
                 float h = images[i].texture.height * scale;
                 float tx = x + (THUMBNAIL_SIZE - w) / 2;
                 float ty = y + (THUMBNAIL_SIZE - h) / 2;
-                
+
                 Rectangle src = { 0, 0, (float)images[i].texture.width, (float)images[i].texture.height };
                 Rectangle dst = { tx, ty, w, h };
-                
+
                 DrawTexturePro(images[i].texture, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
                 DrawRectangleLines(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, GRAY);
 
@@ -206,7 +235,6 @@ int main(void) {
                         }
                     }
                 }
-
             } else {
                 DrawRectangle(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, LIGHTGRAY);
                 DrawText("Loading...", x + 10, y + THUMBNAIL_SIZE / 2 - 10, 10, GRAY);
