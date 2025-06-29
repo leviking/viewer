@@ -47,6 +47,31 @@ std::string GetThumbPath(const std::string &folder, const std::string &filename)
     return thumbDir + "/" + filename + "__thumb.png";
 }
 
+void PreloadNeighbors(ImageEntry* images, int imageCount, int currentIndex, int& prevIndex, int& nextIndex) {
+    prevIndex = (currentIndex - 1 + imageCount) % imageCount;
+    nextIndex = (currentIndex + 1) % imageCount;
+
+    if (!images[prevIndex].fullLoaded) {
+        Image img = LoadImage(images[prevIndex].path);
+        if (img.data != NULL) {
+            images[prevIndex].fullImage = img;
+            images[prevIndex].fullLoaded = true;
+            images[prevIndex].fullTexture = LoadTextureFromImage(img);
+            images[prevIndex].fullTextureLoaded = true;
+        }
+    }
+
+    if (!images[nextIndex].fullLoaded) {
+        Image img = LoadImage(images[nextIndex].path);
+        if (img.data != NULL) {
+            images[nextIndex].fullImage = img;
+            images[nextIndex].fullLoaded = true;
+            images[nextIndex].fullTexture = LoadTextureFromImage(img);
+            images[nextIndex].fullTextureLoaded = true;
+        }
+    }
+}
+
 int LoadFolder(const char* folderPath, ImageEntry* images, int* outCount) {
     DIR* dir = opendir(folderPath);
     if (!dir) return 0;
@@ -82,6 +107,8 @@ int main(void) {
 
     bool inFullView = false;
     int fullViewIndex = -1;
+    int prevIndex = -1;
+    int nextIndex = -1;
 
     std::string folder = pfd::select_folder("Select a folder of images").result();
     if (folder.empty()) {
@@ -99,6 +126,7 @@ int main(void) {
             images[fullViewIndex].fullTextureLoaded) {
 
             ClearBackground(BLACK);
+
             float scale = fmin(
                 (float)GetScreenWidth() / images[fullViewIndex].fullImage.width,
                 (float)GetScreenHeight() / images[fullViewIndex].fullImage.height
@@ -109,75 +137,61 @@ int main(void) {
             float y = (GetScreenHeight() - h) / 2;
 
             DrawTextureEx(images[fullViewIndex].fullTexture, (Vector2){x, y}, 0, scale, WHITE);
-            DrawText("Click or press ESC to close", 20, GetScreenHeight() - 30, 16, LIGHTGRAY);
+            DrawText("←/→ h/l to navigate, click or ESC to close", 20, GetScreenHeight() - 30, 16, LIGHTGRAY);
+
+            // Handle navigation
+            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_L)) {
+                int newIndex = nextIndex;
+
+                if (images[fullViewIndex].fullTextureLoaded)
+                    UnloadTexture(images[fullViewIndex].fullTexture);
+                if (images[fullViewIndex].fullLoaded)
+                    UnloadImage(images[fullViewIndex].fullImage);
+
+                images[fullViewIndex].fullTextureLoaded = false;
+                images[fullViewIndex].fullLoaded = false;
+
+                fullViewIndex = newIndex;
+                PreloadNeighbors(images, imageCount, fullViewIndex, prevIndex, nextIndex);
+            }
+
+            if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_H)) {
+                int newIndex = prevIndex;
+
+                if (images[fullViewIndex].fullTextureLoaded)
+                    UnloadTexture(images[fullViewIndex].fullTexture);
+                if (images[fullViewIndex].fullLoaded)
+                    UnloadImage(images[fullViewIndex].fullImage);
+
+                images[fullViewIndex].fullTextureLoaded = false;
+                images[fullViewIndex].fullLoaded = false;
+
+                fullViewIndex = newIndex;
+                PreloadNeighbors(images, imageCount, fullViewIndex, prevIndex, nextIndex);
+            }
 
             if (IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                 inFullView = false;
-                if (images[fullViewIndex].fullTextureLoaded) {
-                    UnloadTexture(images[fullViewIndex].fullTexture);
-                    images[fullViewIndex].fullTextureLoaded = false;
+
+                for (int idx : {fullViewIndex, nextIndex, prevIndex}) {
+                    if (images[idx].fullTextureLoaded) {
+                        UnloadTexture(images[idx].fullTexture);
+                        images[idx].fullTextureLoaded = false;
+                    }
+                    if (images[idx].fullLoaded) {
+                        UnloadImage(images[idx].fullImage);
+                        images[idx].fullLoaded = false;
+                    }
                 }
-                if (images[fullViewIndex].fullLoaded) {
-                    UnloadImage(images[fullViewIndex].fullImage);
-                    images[fullViewIndex].fullLoaded = false;
-                }
-                fullViewIndex = -1;
+
+                fullViewIndex = prevIndex = nextIndex = -1;
             }
 
-            // Handle navigation keys
-            if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_L)) {
-                // Next image
-                int next = (fullViewIndex + 1) % imageCount;
-            
-                // Clean up current
-                if (images[fullViewIndex].fullTextureLoaded) {
-                    UnloadTexture(images[fullViewIndex].fullTexture);
-                    images[fullViewIndex].fullTextureLoaded = false;
-                }
-                if (images[fullViewIndex].fullLoaded) {
-                    UnloadImage(images[fullViewIndex].fullImage);
-                    images[fullViewIndex].fullLoaded = false;
-                }
-            
-                // Load next
-                Image img = LoadImage(images[next].path);
-                if (img.data != NULL) {
-                    images[next].fullImage = img;
-                    images[next].fullLoaded = true;
-                    images[next].fullTexture = LoadTextureFromImage(img);
-                    images[next].fullTextureLoaded = true;
-                    fullViewIndex = next;
-                }
-            }
-            
-            if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_H)) {
-                // Previous image (wrap around)
-                int prev = (fullViewIndex - 1 + imageCount) % imageCount;
-            
-                if (images[fullViewIndex].fullTextureLoaded) {
-                    UnloadTexture(images[fullViewIndex].fullTexture);
-                    images[fullViewIndex].fullTextureLoaded = false;
-                }
-                if (images[fullViewIndex].fullLoaded) {
-                    UnloadImage(images[fullViewIndex].fullImage);
-                    images[fullViewIndex].fullLoaded = false;
-                }
-            
-                Image img = LoadImage(images[prev].path);
-                if (img.data != NULL) {
-                    images[prev].fullImage = img;
-                    images[prev].fullLoaded = true;
-                    images[prev].fullTexture = LoadTextureFromImage(img);
-                    images[prev].fullTextureLoaded = true;
-                    fullViewIndex = prev;
-                }
-            }
-            
-            
             EndDrawing();
             continue;
         }
 
+        // Thumbnail mode
         float wheel = GetMouseWheelMove();
         scrollY += wheel * 30;
         if (scrollY > 0) scrollY = 0;
@@ -225,7 +239,6 @@ int main(void) {
             if (y + THUMBNAIL_SIZE < 0 || y > GetScreenHeight()) continue;
 
             if (!images[i].loaded && !loadedOneThisFrame) {
-                std::string original = images[i].path;
                 std::string baseName = GetFileName(images[i].path);
                 std::string thumbPath = GetThumbPath(folder, baseName);
 
@@ -282,6 +295,7 @@ int main(void) {
                             images[i].fullTextureLoaded = true;
                             inFullView = true;
                             fullViewIndex = i;
+                            PreloadNeighbors(images, imageCount, i, prevIndex, nextIndex);
                         }
                     }
                 }
