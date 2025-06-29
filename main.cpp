@@ -12,7 +12,11 @@
 typedef struct {
     char path[512];
     Texture2D texture;
+    Image fullImage;
+    Texture2D fullTexture;
     bool loaded;
+    bool fullLoaded;
+    bool fullTextureLoaded;
 } ImageEntry;
 
 bool HasImageExtension(const char *filename) {
@@ -37,6 +41,8 @@ int LoadFolder(const char* folderPath, ImageEntry* images, int* outCount) {
         snprintf(fullPath, sizeof(fullPath), "%s/%s", folderPath, entry->d_name);
         strncpy(images[count].path, fullPath, sizeof(images[count].path));
         images[count].loaded = false;
+        images[count].fullLoaded = false;
+        images[count].fullTextureLoaded = false;
         count++;
     }
 
@@ -54,6 +60,9 @@ int main(void) {
     float scrollY = 0;
     float maxScroll = 0;
 
+    bool inFullView = false;
+    int fullViewIndex = -1;
+
     std::string folder = pfd::select_folder("Select a folder of images").result();
     if (folder.empty()) {
         CloseWindow();
@@ -63,6 +72,44 @@ int main(void) {
     LoadFolder(folder.c_str(), images, &imageCount);
 
     while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+
+        if (inFullView && fullViewIndex >= 0 && fullViewIndex < imageCount &&
+            images[fullViewIndex].fullTextureLoaded) {
+
+            ClearBackground(BLACK);
+
+            float scale = fmin(
+                (float)GetScreenWidth() / images[fullViewIndex].fullImage.width,
+                (float)GetScreenHeight() / images[fullViewIndex].fullImage.height
+            );
+
+            float w = images[fullViewIndex].fullImage.width * scale;
+            float h = images[fullViewIndex].fullImage.height * scale;
+            float x = (GetScreenWidth() - w) / 2;
+            float y = (GetScreenHeight() - h) / 2;
+
+            DrawTextureEx(images[fullViewIndex].fullTexture, (Vector2){x, y}, 0, scale, WHITE);
+            DrawText("Click or press ESC to close", 20, GetScreenHeight() - 30, 16, LIGHTGRAY);
+
+            if (IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                inFullView = false;
+                if (images[fullViewIndex].fullTextureLoaded) {
+                    UnloadTexture(images[fullViewIndex].fullTexture);
+                    images[fullViewIndex].fullTextureLoaded = false;
+                }
+                if (images[fullViewIndex].fullLoaded) {
+                    UnloadImage(images[fullViewIndex].fullImage);
+                    images[fullViewIndex].fullLoaded = false;
+                }
+                fullViewIndex = -1;
+            }
+
+            EndDrawing();
+            continue;
+        }
+
         // Scroll input
         float wheel = GetMouseWheelMove();
         scrollY += wheel * 30;
@@ -74,21 +121,18 @@ int main(void) {
         if (scrollY < GetScreenHeight() - maxScroll - 50)
             scrollY = GetScreenHeight() - maxScroll - 50;
 
-        // Handle "Change Folder" button
+        // Change Folder button
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
             if (mouse.x >= 10 && mouse.x <= 130 && mouse.y >= 10 && mouse.y <= 40) {
-                // Cleanup existing images
                 for (int i = 0; i < imageCount; i++) {
-                    if (images[i].loaded) {
-                        UnloadTexture(images[i].texture);
-                        images[i].loaded = false;
-                    }
+                    if (images[i].loaded) UnloadTexture(images[i].texture);
+                    if (images[i].fullTextureLoaded) UnloadTexture(images[i].fullTexture);
+                    if (images[i].fullLoaded) UnloadImage(images[i].fullImage);
                 }
                 imageCount = 0;
                 scrollY = 0;
 
-                // Reopen dialog
                 std::string newFolder = pfd::select_folder("Select a folder of images").result();
                 if (!newFolder.empty()) {
                     folder = newFolder;
@@ -96,9 +140,6 @@ int main(void) {
                 }
             }
         }
-
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
 
         DrawRectangle(10, 10, 120, 30, LIGHTGRAY);
         DrawText("Change Folder", 20, 18, 12, DARKGRAY);
@@ -130,7 +171,24 @@ int main(void) {
             }
 
             if (images[i].loaded) {
-                DrawTexture(images[i].texture, x, y, WHITE);
+                DrawTexture(images[i].texture, (int)x, (int)y, WHITE);
+
+                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                    Vector2 mouse = GetMousePosition();
+                    Rectangle thumbRect = {(float)x, (float)y, (float)THUMBNAIL_SIZE, (float)THUMBNAIL_SIZE};
+                    if (CheckCollisionPointRec(mouse, thumbRect)) {
+                        Image img = LoadImage(images[i].path);
+                        if (img.data != NULL) {
+                            images[i].fullImage = img;
+                            images[i].fullLoaded = true;
+                            images[i].fullTexture = LoadTextureFromImage(img);
+                            images[i].fullTextureLoaded = true;
+                            inFullView = true;
+                            fullViewIndex = i;
+                        }
+                    }
+                }
+
             } else {
                 DrawRectangle(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, LIGHTGRAY);
                 DrawText("Loading...", x + 10, y + THUMBNAIL_SIZE / 2 - 10, 10, GRAY);
@@ -142,6 +200,8 @@ int main(void) {
 
     for (int i = 0; i < imageCount; i++) {
         if (images[i].loaded) UnloadTexture(images[i].texture);
+        if (images[i].fullTextureLoaded) UnloadTexture(images[i].fullTexture);
+        if (images[i].fullLoaded) UnloadImage(images[i].fullImage);
     }
 
     CloseWindow();
