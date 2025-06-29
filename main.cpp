@@ -162,7 +162,7 @@ int main(void) {
             if (!images[i].loaded && !loadedOneThisFrame) {
                 Image img = LoadImage(images[i].path);
                 if (img.data != NULL) {
-                    ImageResize(&img, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+                    //ImageResize(&img, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
                     images[i].texture = LoadTextureFromImage(img);
                     UnloadImage(img);
                     images[i].loaded = true;
@@ -171,7 +171,25 @@ int main(void) {
             }
 
             if (images[i].loaded) {
-                DrawTexture(images[i].texture, (int)x, (int)y, WHITE);
+                // Draw square background
+                DrawRectangle(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, LIGHTGRAY);
+
+                
+                // Fit texture with aspect ratio inside square
+                float scale = fminf(
+                    (float)THUMBNAIL_SIZE / images[i].texture.width,
+                    (float)THUMBNAIL_SIZE / images[i].texture.height
+                );
+                float w = images[i].texture.width * scale;
+                float h = images[i].texture.height * scale;
+                float tx = x + (THUMBNAIL_SIZE - w) / 2;
+                float ty = y + (THUMBNAIL_SIZE - h) / 2;
+                
+                Rectangle src = { 0, 0, (float)images[i].texture.width, (float)images[i].texture.height };
+                Rectangle dst = { tx, ty, w, h };
+                
+                DrawTexturePro(images[i].texture, src, dst, (Vector2){0, 0}, 0.0f, WHITE);
+                DrawRectangleLines(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, GRAY);
 
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     Vector2 mouse = GetMousePosition();
