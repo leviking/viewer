@@ -139,6 +139,13 @@ int main(void) {
             DrawTextureEx(images[fullViewIndex].fullTexture, (Vector2){x, y}, 0, scale, WHITE);
             DrawText("←/→ h/l to navigate, click or ESC to close", 20, GetScreenHeight() - 30, 16, LIGHTGRAY);
 
+            const char* filename = GetFileName(images[fullViewIndex].path);
+            int textSize = MeasureText(filename, 20);
+            DrawRectangle(10, 10, textSize + 20, 34, Fade(BLACK, 0.5f)); // semi-opaque background
+            DrawText(filename, 21, 19, 20, BLACK);
+            DrawText(filename, 20, 18, 20, WHITE);
+
+
             // Handle navigation
             if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_L)) {
                 int newIndex = nextIndex;
