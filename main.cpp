@@ -331,28 +331,23 @@ int main(void) {
             }
 
         } else {
-            // Thumbnail layout
-            int cols = std::min(imageCount, GetScreenWidth() / (THUMBNAIL_SIZE + PADDING));
-            if (cols == 0) cols = 1;
-            int content_width = cols * THUMBNAIL_SIZE + (cols - 1) * PADDING;
-            int startX = (GetScreenWidth() - content_width) / 2;
-            int rows = (imageCount + cols - 1) / cols;
-            float wheel = GetMouseWheelMove();
-            scrollY += wheel * 30;
-            if (scrollY > 0) scrollY = 0;
-            float maxScroll = rows * (THUMBNAIL_SIZE + PADDING);
-            if (scrollY < GetScreenHeight() - maxScroll - 50)
-                scrollY = GetScreenHeight() - maxScroll - 50;
+            // --- Title Bar ---
+            Rectangle titleBar = { 0, 0, (float)GetScreenWidth(), 50 };
+            DrawRectangleRec(titleBar, RAYWHITE);
+            DrawLine(0, (int)titleBar.height, GetScreenWidth(), (int)titleBar.height, LIGHTGRAY);
 
-            bool loadedOne = false;
+            // Draw folder name on title bar
+            const char* dirName = GetFileName(folder.c_str());
+            int dirNameWidth = MeasureText(dirName, 20);
+            DrawText(dirName, (GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
 
+            // Draw "Generate PDF" button on title bar
             int selectedCount = 0;
             for (int i = 0; i < imageCount; i++) {
                 if (images[i].selected) selectedCount++;
             }
-
             if (selectedCount > 0) {
-                if (GuiButton((Rectangle){ (float)GetScreenWidth() - 150, 10, 120, 30 }, "Generate PDF")) {
+                if (GuiButton((Rectangle){ (float)GetScreenWidth() - 150, (titleBar.height - 30) / 2, 120, 30 }, "Generate PDF")) {
                     std::string pdfPath = pfd::save_file("Save PDF", folder + "/output.pdf", { "PDF Files", "*.pdf" }).result();
                     if (!pdfPath.empty()) {
                         // Parse canvas and margin settings from inches to floats
@@ -411,10 +406,35 @@ int main(void) {
                 }
             }
 
+            // --- Scrolling Thumbnail Area ---
+            BeginScissorMode(0, (int)titleBar.height + 1, GetScreenWidth(), GetScreenHeight() - (int)titleBar.height - 1);
+            
+            // Thumbnail layout
+            int cols = std::min(imageCount, GetScreenWidth() / (THUMBNAIL_SIZE + PADDING));
+            if (cols == 0) cols = 1;
+            int content_width = cols * THUMBNAIL_SIZE + (cols - 1) * PADDING;
+            int startX = (GetScreenWidth() - content_width) / 2;
+            int rows = (imageCount + cols - 1) / cols;
+            float wheel = GetMouseWheelMove();
+            scrollY += wheel * 30;
+            if (scrollY > 0) scrollY = 0;
+            
+            float scrollAreaHeight = GetScreenHeight() - titleBar.height;
+            float totalContentHeight = rows * (THUMBNAIL_SIZE + PADDING) + PADDING;
+            float maxScroll = 0;
+            if (totalContentHeight > scrollAreaHeight) {
+                maxScroll = totalContentHeight - scrollAreaHeight;
+            }
+            if (scrollY < -maxScroll) scrollY = -maxScroll;
+
+
+            bool loadedOne = false;
+
             for (int i = 0; i < imageCount; i++) {
                 int x = startX + (i % cols) * (THUMBNAIL_SIZE + PADDING);
-                int y = (i / cols) * (THUMBNAIL_SIZE + PADDING) + 50 + scrollY;
-                if (y + THUMBNAIL_SIZE < 0 || y > GetScreenHeight()) continue;
+                int y = (i / cols) * (THUMBNAIL_SIZE + PADDING) + (int)titleBar.height + PADDING + (int)scrollY;
+                
+                if (y + THUMBNAIL_SIZE < titleBar.height || y > GetScreenHeight()) continue;
 
                 if (!images[i].loaded && !loadedOne) {
                     std::string base = GetFileName(images[i].path);
@@ -479,6 +499,7 @@ int main(void) {
                     }
                 }
             }
+            EndScissorMode();
         }
 
         EndDrawing();
