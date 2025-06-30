@@ -332,7 +332,10 @@ int main(void) {
 
         } else {
             // Thumbnail layout
-            int cols = GetScreenWidth() / (THUMBNAIL_SIZE + PADDING);
+            int cols = std::min(imageCount, GetScreenWidth() / (THUMBNAIL_SIZE + PADDING));
+            if (cols == 0) cols = 1;
+            int content_width = cols * THUMBNAIL_SIZE + (cols - 1) * PADDING;
+            int startX = (GetScreenWidth() - content_width) / 2;
             int rows = (imageCount + cols - 1) / cols;
             float wheel = GetMouseWheelMove();
             scrollY += wheel * 30;
@@ -409,7 +412,7 @@ int main(void) {
             }
 
             for (int i = 0; i < imageCount; i++) {
-                int x = (i % cols) * (THUMBNAIL_SIZE + PADDING) + PADDING;
+                int x = startX + (i % cols) * (THUMBNAIL_SIZE + PADDING);
                 int y = (i / cols) * (THUMBNAIL_SIZE + PADDING) + 50 + scrollY;
                 if (y + THUMBNAIL_SIZE < 0 || y > GetScreenHeight()) continue;
 
