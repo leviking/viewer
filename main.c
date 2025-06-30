@@ -1,5 +1,5 @@
 /**********************************************************************************************
-* 
+*
 *   raylib-viewer - A simple image viewer with canvas layout and PDF export.
 *
 *   FEATURES:
@@ -25,7 +25,7 @@
 *   DEPENDENCIES:
 *       - raylib: for graphics and windowing.
 *       - raygui: for UI controls.
-*       - portable-file-dialogs: for native file dialogs.
+*       - tinyfiledialogs: for native file dialogs.
 *       - pdfgen: for PDF generation.
 *
 *   LICENSE: This software is licensed under the zlib/libpng license. See LICENSE for details.
@@ -37,9 +37,7 @@
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 
-#define PFD_IMPLEMENTATION
-#include "portable-file-dialogs.h"
-
+#include "tinyfiledialogs.h"
 #include "pdfgen.h"
 
 #include <dirent.h>
@@ -49,10 +47,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
-// For portable-file-dialogs C++ API
-#include <string>
-#include <vector>
 
 //----------------------------------------------------------------------------------
 // Defines
@@ -129,11 +123,10 @@ int main(void) {
     char selectedFiles[MAX_SELECTED_FILES][MAX_FILENAME_LEN];
     int selectedFileCount = 0;
 
-    // Prompt user to select a folder using the pfd C++ API
-    std::string folder_str = pfd::select_folder("Select a folder of images", ".").result();
-    const char* folder = folder_str.c_str();
+    // Prompt user to select a folder
+    const char* folder = tinyfd_selectFolderDialog("Select a folder of images", ".");
 
-    if (folder_str.empty()) {
+    if (!folder || strlen(folder) == 0) {
         CloseWindow();
         return 0;
     }
@@ -338,10 +331,10 @@ int main(void) {
             }
             if (selectedCount > 0) {
                 if (GuiButton((Rectangle){ (float)GetScreenWidth() - 150, (titleBar.height - 30) / 2, 120, 30 }, "Generate PDF")) {
-                    std::string pdfPath_str = pfd::save_file("Save PDF", folder, { "*.pdf" }, pfd::opt::force_overwrite).result();
-                    const char* pdfPath = pdfPath_str.c_str();
+                    const char* filterPatterns[] = { "*.pdf" };
+                    const char* pdfPath = tinyfd_saveFileDialog("Save PDF", "output.pdf", 1, filterPatterns, "PDF Files");
 
-                    if (!pdfPath_str.empty()) {
+                    if (pdfPath && strlen(pdfPath) > 0) {
                         // PDF generation logic...
                         float cw = strtof(bufCanvasW, NULL);
                         float ch = strtof(bufCanvasH, NULL);
@@ -495,7 +488,8 @@ int main(void) {
     selectedFileCount = 0;
     for (int i = 0; i < imageCount; ++i) {
         if (images[i].selected) {
-            strncpy(selectedFiles[selectedFileCount], GetFileName(images[i].path), MAX_FILENAME_LEN);
+            strncpy(selectedFiles[selectedFileCount], GetFileName(images[i].path), MAX_FILENAME_LEN -1);
+            selectedFiles[selectedFileCount][MAX_FILENAME_LEN - 1] = '\0'; // Ensure null termination
             selectedFileCount++;
         }
     }
@@ -568,7 +562,10 @@ void LoadSettings(const char* folder, char* cw, char* ch, char* mt, char* mb, ch
     snprintf(settingsPath, MAX_PATH_LEN, "%s/.rayview_settings", folder);
     FILE* f = fopen(settingsPath, "r");
     if (f) {
-        fscanf(f, "%s\n%s\n%s\n%s\n%s\n%s\n", cw, ch, mt, mb, ml, mr);
+        // Use dummy reads to avoid warnings, but check return value
+        if (fscanf(f, "%s\n%s\n%s\n%s\n%s\n%s\n", cw, ch, mt, mb, ml, mr) != 6) {
+            // Handle error or incomplete file
+        }
         *selectedCount = 0;
         while (*selectedCount < MAX_SELECTED_FILES && fscanf(f, "%s\n", selectedFiles[*selectedCount]) != EOF) {
             (*selectedCount)++;
