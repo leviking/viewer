@@ -320,12 +320,14 @@ int main(void) {
             DrawLine(0, (int)titleBar.height, GetScreenWidth(), (int)titleBar.height, LIGHTGRAY);
 
             // Draw folder name on title bar
-            const char* dirName = GetFileName(folder);
-            int dirNameWidth = MeasureText(dirName, 20);
-            DrawText(dirName, (GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
-
-            // Draw folder name on title bar
-            const char* dirName = GetFileName(folder);
+            char cleanPath[MAX_PATH_LEN];
+            strncpy(cleanPath, folder, MAX_PATH_LEN - 1);
+            cleanPath[MAX_PATH_LEN - 1] = '\0';
+            int len = strlen(cleanPath);
+            if (len > 0 && (cleanPath[len - 1] == '/' || cleanPath[len - 1] == '\\')) {
+                cleanPath[len - 1] = '\0';
+            }
+            const char* dirName = GetFileName(cleanPath);
             int dirNameWidth = MeasureText(dirName, 20);
             DrawText(dirName, (GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
 
