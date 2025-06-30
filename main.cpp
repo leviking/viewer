@@ -205,7 +205,7 @@ int main(void) {
             float cy = (GetScreenHeight() - dispH) / 2.0f;
 
             DrawRectangle(cx, cy, dispW, dispH, WHITE);
-            DrawRectangleLines(cx, cy, dispW, dispH, GRAY);
+            DrawRectangleLinesEx((Rectangle){cx, cy, dispW, dispH}, 3, GRAY);
 
             float marginL_s = marginL * scale;
             float marginR_s = marginR * scale;
@@ -452,7 +452,7 @@ int main(void) {
                     Rectangle src = { 0, 0, (float)images[i].texture.width, (float)images[i].texture.height };
                     Rectangle dst = { tx, ty, w, h };
                     DrawTexturePro(images[i].texture, src, dst, {0,0}, 0, WHITE);
-                    DrawRectangleLines(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, images[i].selected ? BLUE : GRAY);
+                    DrawRectangleLinesEx((Rectangle){(float)x, (float)y, THUMBNAIL_SIZE, THUMBNAIL_SIZE}, 3, images[i].selected ? BLUE : GRAY);
 
                     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                         Vector2 mouse = GetMousePosition();
