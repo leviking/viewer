@@ -113,6 +113,7 @@ int main(void) {
     float scrollY = 0;
     bool inFullView = false;
     int fullViewIndex = -1, prevIndex = -1, nextIndex = -1;
+    char folder[MAX_PATH_LEN];
 
     // Canvas and margin settings (stored as strings for textbox input)
     char bufCanvasW[8] = "8.0", bufCanvasH[8] = "10.0";
@@ -124,12 +125,14 @@ int main(void) {
     int selectedFileCount = 0;
 
     // Prompt user to select a folder
-    const char* folder = tinyfd_selectFolderDialog("Select a folder of images", ".");
+    const char* initialFolder = tinyfd_selectFolderDialog("Select a folder of images", ".");
 
-    if (!folder || strlen(folder) == 0) {
+    if (!initialFolder || strlen(initialFolder) == 0) {
         CloseWindow();
         return 0;
     }
+    strncpy(folder, initialFolder, MAX_PATH_LEN - 1);
+    folder[MAX_PATH_LEN - 1] = '\0';
 
     // Load settings and image files from the selected folder
     LoadSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR, selectedFiles, &selectedFileCount);
@@ -318,6 +321,37 @@ int main(void) {
             Rectangle titleBar = { 0, 0, (float)GetScreenWidth(), 50 };
             DrawRectangleRec(titleBar, RAYWHITE);
             DrawLine(0, (int)titleBar.height, GetScreenWidth(), (int)titleBar.height, LIGHTGRAY);
+
+            // Add a "Change Folder" button
+            if (GuiButton((Rectangle){ 10, (titleBar.height - 30) / 2, 120, 30 }, "Change Folder")) {
+                const char* newFolder = tinyfd_selectFolderDialog("Select a new folder", folder);
+                if (newFolder && strlen(newFolder) > 0 && strcmp(newFolder, folder) != 0) {
+                    // Unload old images
+                    for (int i = 0; i < imageCount; i++) {
+                        if (images[i].loaded) UnloadTexture(images[i].texture);
+                        if (images[i].fullTextureLoaded) UnloadTexture(images[i].fullTexture);
+                        if (images[i].fullLoaded) UnloadImage(images[i].fullImage);
+                    }
+
+                    // Load new folder
+                    strncpy(folder, newFolder, MAX_PATH_LEN - 1);
+                    folder[MAX_PATH_LEN - 1] = '\0';
+                    LoadSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR, selectedFiles, &selectedFileCount);
+                    LoadFolder(folder, images, &imageCount);
+
+                    // Mark images as selected based on loaded settings
+                    for (int i = 0; i < imageCount; ++i) {
+                        const char* filename = GetFileName(images[i].path);
+                        for (int j = 0; j < selectedFileCount; ++j) {
+                            if (strcmp(filename, selectedFiles[j]) == 0) {
+                                images[i].selected = true;
+                                break;
+                            }
+                        }
+                    }
+                    scrollY = 0; // Reset scroll
+                }
+            }
 
             // Draw folder name on title bar
             char cleanPath[MAX_PATH_LEN];
