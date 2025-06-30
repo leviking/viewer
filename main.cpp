@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string>
+#include <fstream>
+#include <iostream>
 
 #define DPI 300
 #define THUMBNAIL_SIZE 128
@@ -48,6 +50,34 @@ std::string GetThumbPath(const std::string &folder, const std::string &filename)
     std::string thumbDir = folder + "/.rayview_thumbs";
     EnsureDirectoryExists(thumbDir.c_str());
     return thumbDir + "/" + filename + "__thumb.png";
+}
+
+void SaveSettings(const std::string& folder, const char* cw, const char* ch, const char* mt, const char* mb, const char* ml, const char* mr) {
+    std::string settingsPath = folder + "/.rayview_settings";
+    std::ofstream outFile(settingsPath);
+    if (outFile.is_open()) {
+        outFile << cw << std::endl;
+        outFile << ch << std::endl;
+        outFile << mt << std::endl;
+        outFile << mb << std::endl;
+        outFile << ml << std::endl;
+        outFile << mr << std::endl;
+        outFile.close();
+    }
+}
+
+void LoadSettings(const std::string& folder, char* cw, char* ch, char* mt, char* mb, char* ml, char* mr) {
+    std::string settingsPath = folder + "/.rayview_settings";
+    std::ifstream inFile(settingsPath);
+    if (inFile.is_open()) {
+        inFile.getline(cw, 8);
+        inFile.getline(ch, 8);
+        inFile.getline(mt, 8);
+        inFile.getline(mb, 8);
+        inFile.getline(ml, 8);
+        inFile.getline(mr, 8);
+        inFile.close();
+    }
 }
 
 void PreloadNeighbors(ImageEntry* images, int imageCount, int currentIndex, int& prevIndex, int& nextIndex) {
@@ -116,6 +146,7 @@ int main(void) {
     std::string folder = pfd::select_folder("Select a folder of images").result();
     if (folder.empty()) { CloseWindow(); return 0; }
 
+    LoadSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR);
     LoadFolder(folder.c_str(), images, &imageCount);
 
     while (!WindowShouldClose()) {
@@ -253,6 +284,7 @@ int main(void) {
 
             // Exit full screen view
             if (IsKeyPressed(KEY_ESCAPE) || GuiButton((Rectangle){ (float)GetScreenWidth() - 120, 40, 100, 30 }, "Back")) {
+                SaveSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR);
                 for (int idx : {fullViewIndex, prevIndex, nextIndex}) {
                     if (images[idx].fullTextureLoaded) UnloadTexture(images[idx].fullTexture);
                     if (images[idx].fullLoaded) UnloadImage(images[idx].fullImage);
@@ -351,6 +383,9 @@ int main(void) {
     }
 
     CloseWindow();
+
+    SaveSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR);
+
     return 0;
 }
 
