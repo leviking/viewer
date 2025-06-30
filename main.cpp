@@ -136,6 +136,7 @@ int LoadFolder(const char* folderPath, ImageEntry* images, int* outCount) {
 }
 
 int main(void) {
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(1000, 800, "Raylib Viewer With Canvas");
     SetTargetFPS(60);
 
