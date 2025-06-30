@@ -1,0 +1,10 @@
+# Build output
+build/
+
+# Compiled files
+*.o
+*.out
+
+# Executables
+raylib-viewer
+viewer
