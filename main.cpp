@@ -251,7 +251,8 @@ int main(void) {
                 PreloadNeighbors(images, imageCount, fullViewIndex, prevIndex, nextIndex);
             }
 
-            if (IsKeyPressed(KEY_ESCAPE)) {
+            // Exit full screen view
+            if (IsKeyPressed(KEY_ESCAPE) || GuiButton((Rectangle){ (float)GetScreenWidth() - 120, 40, 100, 30 }, "Back")) {
                 for (int idx : {fullViewIndex, prevIndex, nextIndex}) {
                     if (images[idx].fullTextureLoaded) UnloadTexture(images[idx].fullTexture);
                     if (images[idx].fullLoaded) UnloadImage(images[idx].fullImage);
