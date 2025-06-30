@@ -33,11 +33,12 @@ WORKDIR /app
 COPY . .
 
 # --- Build your application ---
+# Use g++ because main.c now contains C++ code for portable-file-dialogs
 # Build for Linux
-RUN gcc main.c pdfgen.c -o viewer-linux -I/libs/raylib/src -L/libs/raylib/src -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+RUN g++ main.c pdfgen.c -o viewer-linux -I/libs/raylib/src -L/libs/raylib/src -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 # Build for Windows
-RUN x86_64-w64-mingw32-gcc main.c pdfgen.c -o viewer-windows.exe -I/libs/raylib/src -L/libs/raylib/src -lraylib -lopengl32 -lgdi32 -lwinmm -static
+RUN x86_64-w64-mingw32-g++ main.c pdfgen.c -o viewer-windows.exe -I/libs/raylib/src -L/libs/raylib/src -lraylib -lopengl32 -lgdi32 -lwinmm -static
 
 # Final stage to hold the artifacts
 FROM scratch
