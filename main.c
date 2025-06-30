@@ -6,7 +6,7 @@
 
 int main(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(1000, 800, "Raylib Viewer With Canvas");
+    InitWindow(1000, 800, "Graphics Assembler");
     SetTargetFPS(60);
 
     State state;
@@ -59,6 +59,7 @@ int main(void) {
         if (state.images[i].fullTextureLoaded) UnloadTexture(state.images[i].fullTexture);
         if (state.images[i].fullLoaded) UnloadImage(state.images[i].fullImage);
     }
+    UnloadFont(state.font);
 
     CloseWindow();
     return 0;

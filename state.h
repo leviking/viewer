@@ -56,6 +56,7 @@ typedef struct {
     ActiveTextBox activeBox;
     char selectedFiles[MAX_SELECTED_FILES][MAX_FILENAME_LEN];
     int selectedFileCount;
+    Font font;
 } State;
 
 void LoadFolder(State* state, const char* folderPath);

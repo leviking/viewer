@@ -97,17 +97,8 @@ void InitializeState(State* state) {
     strncpy(state->folder, initialFolder, MAX_PATH_LEN - 1);
     state->folder[MAX_PATH_LEN - 1] = '\0';
 
-    LoadSettings(state);
+    // Load folder first, then apply settings
     LoadFolder(state, state->folder);
-
-    for (int i = 0; i < state->imageCount; ++i) {
-        const char* filename = GetFileName(state->images[i].path);
-        for (int j = 0; j < state->selectedFileCount; ++j) {
-            if (strcmp(filename, state->selectedFiles[j]) == 0) {
-                state->images[i].selected = true;
-                state->images[i].selectionOrder = j + 1;
-                break;
-            }
-        }
-    }
+    LoadSettings(state);
+    state->font = LoadFont("Lato-Regular.ttf");
 }

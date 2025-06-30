@@ -5,7 +5,7 @@ CC = gcc
 
 # Build directory
 BUILD_DIR = build
-TARGET = $(BUILD_DIR)/raylib-viewer
+TARGET = $(BUILD_DIR)/graphics-assembler
 
 # Get raylib flags using pkg-config
 RAYLIB_CFLAGS = $(shell pkg-config --cflags raylib)

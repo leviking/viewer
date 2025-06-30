@@ -56,8 +56,8 @@ void DrawGalleryView(State* state) {
         cleanPath[len - 1] = '\0';
     }
     const char* dirName = GetFileName(cleanPath);
-    int dirNameWidth = MeasureText(dirName, 20);
-    DrawText(dirName, (GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
+    int dirNameWidth = MeasureTextEx(state->font, dirName, 20, 1).x;
+    DrawTextEx(state->font, dirName, (Vector2){(GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2}, 20, 1, BLACK);
 
     int selectedCount = 0;
     for (int i = 0; i < state->imageCount; i++) {
@@ -134,7 +134,7 @@ void DrawGalleryView(State* state) {
                 char orderStr[4];
                 snprintf(orderStr, 4, "%d", state->images[i].selectionOrder);
                 DrawRectangle(x + 4, y + 4, 24, 24, BLUE);
-                DrawText(orderStr, x + 10, y + 8, 20, WHITE);
+                DrawTextEx(state->font, orderStr, (Vector2){x + 10, y + 8}, 20, 1, WHITE);
             }
 
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -187,8 +187,8 @@ void DrawFullScreenView(State* state) {
     DrawLine(0, (int)titleBar.height, GetScreenWidth(), (int)titleBar.height, LIGHTGRAY);
 
     const char* filename = GetFileName(state->images[state->fullViewIndex].path);
-    int textSize = MeasureText(filename, 20);
-    DrawText(filename, (GetScreenWidth() - textSize) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
+    int textSize = MeasureTextEx(state->font, filename, 20, 1).x;
+    DrawTextEx(state->font, filename, (Vector2){(GetScreenWidth() - textSize) / 2, (int)(titleBar.height - 20) / 2}, 20, 1, BLACK);
 
     float canvasWidthIn = strtof(state->bufCanvasW, NULL);
     float canvasHeightIn = strtof(state->bufCanvasH, NULL);
@@ -249,31 +249,31 @@ void DrawFullScreenView(State* state) {
         state->activeBox = TEXTBOX_NONE;
     }
 
-    DrawText("Canvas (in)", baseX, baseY, 18, GRAY);
+    DrawTextEx(state->font, "Canvas (in)", (Vector2){baseX, baseY}, 18, 1, GRAY);
     Rectangle rCW = { (float)baseX, (float)baseY + 20, (float)inputW, (float)inputH };
     if (GuiTextBox(rCW, state->bufCanvasW, 8, state->activeBox == TEXTBOX_CANVAS_W)) state->activeBox = TEXTBOX_CANVAS_W;
-    DrawText("W", baseX + inputW + 5, baseY + 25, 16, LIGHTGRAY);
+    DrawTextEx(state->font, "W", (Vector2){baseX + inputW + 5, baseY + 25}, 16, 1, LIGHTGRAY);
     Rectangle rCH = { (float)baseX + inputW + spacing, (float)baseY + 20, (float)inputW, (float)inputH };
     if (GuiTextBox(rCH, state->bufCanvasH, 8, state->activeBox == TEXTBOX_CANVAS_H)) state->activeBox = TEXTBOX_CANVAS_H;
-    DrawText("H", baseX + inputW + spacing + inputW + 5, baseY + 25, 16, LIGHTGRAY);
+    DrawTextEx(state->font, "H", (Vector2){baseX + inputW + spacing + inputW + 5, baseY + 25}, 16, 1, LIGHTGRAY);
 
     baseY += 60;
-    DrawText("Margins (in)", baseX, baseY, 18, GRAY);
+    DrawTextEx(state->font, "Margins (in)", (Vector2){baseX, baseY}, 18, 1, GRAY);
     Rectangle rMT = { (float)baseX, (float)baseY + 20, (float)inputW, (float)inputH };
     if (GuiTextBox(rMT, state->bufMarginT, 8, state->activeBox == TEXTBOX_MARGIN_T)) state->activeBox = TEXTBOX_MARGIN_T;
-    DrawText("T", baseX + inputW + 5, baseY + 25, 16, LIGHTGRAY);
+    DrawTextEx(state->font, "T", (Vector2){baseX + inputW + 5, baseY + 25}, 16, 1, LIGHTGRAY);
     Rectangle rMB = { (float)baseX + inputW + spacing, (float)baseY + 20, (float)inputW, (float)inputH };
     if (GuiTextBox(rMB, state->bufMarginB, 8, state->activeBox == TEXTBOX_MARGIN_B)) state->activeBox = TEXTBOX_MARGIN_B;
-    DrawText("B", baseX + inputW + spacing + inputW + 5, baseY + 25, 16, LIGHTGRAY);
+    DrawTextEx(state->font, "B", (Vector2){baseX + inputW + spacing + inputW + 5, baseY + 25}, 16, 1, LIGHTGRAY);
     Rectangle rML = { (float)baseX, (float)baseY + 20 + inputH + 10, (float)inputW, (float)inputH };
     if (GuiTextBox(rML, state->bufMarginL, 8, state->activeBox == TEXTBOX_MARGIN_L)) state->activeBox = TEXTBOX_MARGIN_L;
-    DrawText("L", baseX + inputW + 5, baseY + 25 + inputH + 10, 16, LIGHTGRAY);
+    DrawTextEx(state->font, "L", (Vector2){baseX + inputW + 5, baseY + 25 + inputH + 10}, 16, 1, LIGHTGRAY);
     Rectangle rMR = { (float)baseX + inputW + spacing, (float)baseY + 20 + inputH + 10, (float)inputW, (float)inputH };
     if (GuiTextBox(rMR, state->bufMarginR, 8, state->activeBox == TEXTBOX_MARGIN_R)) state->activeBox = TEXTBOX_MARGIN_R;
-    DrawText("R", baseX + inputW + spacing + inputW + 5, baseY + 25 + inputH + 10, 16, LIGHTGRAY);
+    DrawTextEx(state->font, "R", (Vector2){baseX + inputW + spacing + inputW + 5, baseY + 25 + inputH + 10}, 16, 1, LIGHTGRAY);
 
     if (state->images[state->fullViewIndex].selected) {
-        DrawText("Selected", GetScreenWidth() - 120, GetScreenHeight() - 40, 20, BLUE);
+        DrawTextEx(state->font, "Selected", (Vector2){GetScreenWidth() - 120, GetScreenHeight() - 40}, 20, 1, BLUE);
     }
 
     if (IsKeyPressed(KEY_S)) {
@@ -333,10 +333,26 @@ void DrawReorderView(State* state) {
     Rectangle titleBar = { 0, 0, (float)GetScreenWidth(), 50 };
     DrawRectangleRec(titleBar, RAYWHITE);
     DrawLine(0, (int)titleBar.height, GetScreenWidth(), (int)titleBar.height, LIGHTGRAY);
-    DrawText("Reorder/Export", (GetScreenWidth() - MeasureText("Reorder/Export", 20)) / 2, (titleBar.height - 20) / 2, 20, BLACK);
+    DrawTextEx(state->font, "Reorder/Export", (Vector2){(GetScreenWidth() - MeasureTextEx(state->font, "Reorder/Export", 20, 1).x) / 2, (titleBar.height - 20) / 2}, 20, 1, BLACK);
 
     if (GuiButton((Rectangle){ 10, (titleBar.height - 30) / 2, 100, 30 }, "Back")) {
         state->currentState = STATE_GALLERY;
+    }
+
+    if (GuiButton((Rectangle){ 120, (titleBar.height - 30) / 2, 140, 30 }, "Add Blank Page")) {
+        if (state->imageCount < MAX_IMAGES) {
+            ImageEntry* blank = &state->images[state->imageCount++];
+            strncpy(blank->path, "[BLANK_PAGE]", MAX_PATH_LEN - 1);
+            blank->selected = true;
+            blank->loaded = true;
+            int maxOrder = 0;
+            for (int i = 0; i < state->imageCount; ++i) {
+                if (state->images[i].selectionOrder > maxOrder) {
+                    maxOrder = state->images[i].selectionOrder;
+                }
+            }
+            blank->selectionOrder = maxOrder + 1;
+        }
     }
 
     ImageEntry* sortedSelection[MAX_SELECTED_FILES];
@@ -364,7 +380,8 @@ void DrawReorderView(State* state) {
 
     for (int i = 0; i < selectedCount; i++) {
         int y = startY + i * itemHeight;
-        DrawText(GetFileName(sortedSelection[i]->path), startX, y + 10, 20, BLACK);
+        const char* displayName = strcmp(sortedSelection[i]->path, "[BLANK_PAGE]") == 0 ? "[BLANK_PAGE]" : GetFileName(sortedSelection[i]->path);
+        DrawTextEx(state->font, displayName, (Vector2){startX, y + 10}, 20, 1, BLACK);
 
         if (GuiButton((Rectangle){ (float)startX + listWidth + 10, (float)y, 80, (float)itemHeight - 5 }, "Up")) {
             if (i > 0) {
@@ -407,18 +424,20 @@ void DrawReorderView(State* state) {
             float drawH = (ch - mt - mb) * 72.0f;
 
             for (int i = 0; i < selectedCount; i++) {
-                Image img = LoadImage(sortedSelection[i]->path);
-                if (img.data) {
-                    pdf_append_page(pdf);
-                    float imgW = img.width;
-                    float imgH = img.height;
-                    float scale = fminf(drawW / imgW, drawH / imgH);
-                    float finalW = imgW * scale;
-                    float finalH = imgH * scale;
-                    float finalX = drawX + (drawW - finalW) / 2.0f;
-                    float finalY = drawY + (drawH - finalH) / 2.0f;
-                    pdf_add_image_file(pdf, NULL, finalX, finalY, finalW, finalH, sortedSelection[i]->path);
-                    UnloadImage(img);
+                pdf_append_page(pdf);
+                if (strcmp(sortedSelection[i]->path, "[BLANK_PAGE]") != 0) {
+                    Image img = LoadImage(sortedSelection[i]->path);
+                    if (img.data) {
+                        float imgW = img.width;
+                        float imgH = img.height;
+                        float scale = fminf(drawW / imgW, drawH / imgH);
+                        float finalW = imgW * scale;
+                        float finalH = imgH * scale;
+                        float finalX = drawX + (drawW - finalW) / 2.0f;
+                        float finalY = drawY + (drawH - finalH) / 2.0f;
+                        pdf_add_image_file(pdf, NULL, finalX, finalY, finalW, finalH, sortedSelection[i]->path);
+                        UnloadImage(img);
+                    }
                 }
             }
             pdf_save(pdf, pdfPath);
