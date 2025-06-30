@@ -3,6 +3,7 @@
 #include "raygui.h"
 #define PFD_IMPLEMENTATION
 #include "portable-file-dialogs.h"
+#include "pdfgen.h"
 
 #include <dirent.h>
 #include <string.h>
@@ -341,6 +342,71 @@ int main(void) {
                 scrollY = GetScreenHeight() - maxScroll - 50;
 
             bool loadedOne = false;
+
+            int selectedCount = 0;
+            for (int i = 0; i < imageCount; i++) {
+                if (images[i].selected) selectedCount++;
+            }
+
+            if (selectedCount > 0) {
+                if (GuiButton((Rectangle){ (float)GetScreenWidth() - 150, 10, 120, 30 }, "Generate PDF")) {
+                    std::string pdfPath = pfd::save_file("Save PDF", folder + "/output.pdf", { "PDF Files", "*.pdf" }).result();
+                    if (!pdfPath.empty()) {
+                        // Parse canvas and margin settings from inches to floats
+                        float cw = strtof(bufCanvasW, NULL);
+                        float ch = strtof(bufCanvasH, NULL);
+                        float mt = strtof(bufMarginT, NULL);
+                        float mb = strtof(bufMarginB, NULL);
+                        float ml = strtof(bufMarginL, NULL);
+                        float mr = strtof(bufMarginR, NULL);
+
+                        // Convert inches to PDF points (72 points per inch)
+                        float pageW = cw * 72.0f;
+                        float pageH = ch * 72.0f;
+
+                        struct pdf_info info = {
+                            .creator = "Raylib Viewer",
+                            .producer = "PDFGen",
+                            .title = "Image Compilation",
+                            .author = "User",
+                            .subject = "Selected Images",
+                            .date = "Today"
+                        };
+                        struct pdf_doc *pdf = pdf_create(pageW, pageH, &info);
+                        pdf_set_font(pdf, "Helvetica");
+
+                        float drawX = ml * 72.0f;
+                        float drawY = mb * 72.0f;
+                        float drawW = (cw - ml - mr) * 72.0f;
+                        float drawH = (ch - mt - mb) * 72.0f;
+
+                        for (int i = 0; i < imageCount; i++) {
+                            if (images[i].selected) {
+                                Image img = LoadImage(images[i].path);
+                                if (img.data) {
+                                    pdf_append_page(pdf);
+
+                                    // Scale image to fit drawable area, preserving aspect ratio
+                                    float imgW = img.width;
+                                    float imgH = img.height;
+                                    float scale = fminf(drawW / imgW, drawH / imgH);
+                                    float finalW = imgW * scale;
+                                    float finalH = imgH * scale;
+
+                                    // Center the image within the drawable area
+                                    float finalX = drawX + (drawW - finalW) / 2.0f;
+                                    float finalY = drawY + (drawH - finalH) / 2.0f;
+
+                                    pdf_add_image_file(pdf, NULL, finalX, finalY, finalW, finalH, images[i].path);
+                                    UnloadImage(img);
+                                }
+                            }
+                        }
+                        pdf_save(pdf, pdfPath.c_str());
+                        pdf_destroy(pdf);
+                    }
+                }
+            }
 
             for (int i = 0; i < imageCount; i++) {
                 int x = (i % cols) * (THUMBNAIL_SIZE + PADDING) + PADDING;
