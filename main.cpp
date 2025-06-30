@@ -11,6 +11,8 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <vector>
+#include <algorithm>
 
 #define DPI 300
 #define THUMBNAIL_SIZE 128
@@ -25,6 +27,7 @@ typedef struct {
     bool loaded;
     bool fullLoaded;
     bool fullTextureLoaded;
+    bool selected;
 } ImageEntry;
 
 bool HasImageExtension(const char *filename) {
@@ -52,7 +55,7 @@ std::string GetThumbPath(const std::string &folder, const std::string &filename)
     return thumbDir + "/" + filename + "__thumb.png";
 }
 
-void SaveSettings(const std::string& folder, const char* cw, const char* ch, const char* mt, const char* mb, const char* ml, const char* mr) {
+void SaveSettings(const std::string& folder, const char* cw, const char* ch, const char* mt, const char* mb, const char* ml, const char* mr, const std::vector<std::string>& selected) {
     std::string settingsPath = folder + "/.rayview_settings";
     std::ofstream outFile(settingsPath);
     if (outFile.is_open()) {
@@ -62,11 +65,14 @@ void SaveSettings(const std::string& folder, const char* cw, const char* ch, con
         outFile << mb << std::endl;
         outFile << ml << std::endl;
         outFile << mr << std::endl;
+        for (const auto& s : selected) {
+            outFile << s << std::endl;
+        }
         outFile.close();
     }
 }
 
-void LoadSettings(const std::string& folder, char* cw, char* ch, char* mt, char* mb, char* ml, char* mr) {
+void LoadSettings(const std::string& folder, char* cw, char* ch, char* mt, char* mb, char* ml, char* mr, std::vector<std::string>& selected) {
     std::string settingsPath = folder + "/.rayview_settings";
     std::ifstream inFile(settingsPath);
     if (inFile.is_open()) {
@@ -76,6 +82,12 @@ void LoadSettings(const std::string& folder, char* cw, char* ch, char* mt, char*
         inFile.getline(mb, 8);
         inFile.getline(ml, 8);
         inFile.getline(mr, 8);
+        std::string line;
+        while (std::getline(inFile, line)) {
+            if (!line.empty()) {
+                selected.push_back(line);
+            }
+        }
         inFile.close();
     }
 }
@@ -113,6 +125,7 @@ int LoadFolder(const char* folderPath, ImageEntry* images, int* outCount) {
         images[count].loaded = false;
         images[count].fullLoaded = false;
         images[count].fullTextureLoaded = false;
+        images[count].selected = false;
         count++;
     }
 
@@ -142,12 +155,20 @@ int main(void) {
 
     enum ActiveTextBox { NONE, CW, CH, MT, MB, ML, MR };
     static ActiveTextBox activeBox = NONE;
+    std::vector<std::string> selectedFiles;
 
     std::string folder = pfd::select_folder("Select a folder of images").result();
     if (folder.empty()) { CloseWindow(); return 0; }
 
-    LoadSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR);
+    LoadSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR, selectedFiles);
     LoadFolder(folder.c_str(), images, &imageCount);
+
+    for (int i = 0; i < imageCount; ++i) {
+        std::string filename = GetFileName(images[i].path);
+        if (std::find(selectedFiles.begin(), selectedFiles.end(), filename) != selectedFiles.end()) {
+            images[i].selected = true;
+        }
+    }
 
     while (!WindowShouldClose()) {
         BeginDrawing();
@@ -262,6 +283,14 @@ int main(void) {
             DrawText("R", baseX + inputW + spacing + inputW + 5, baseY + 25 + inputH + 10, 16, LIGHTGRAY);
             if (GuiTextBox(rMR, bufMarginR, 8, activeBox == MR)) activeBox = MR;
 
+            if (images[fullViewIndex].selected) {
+                DrawText("Selected", GetScreenWidth() - 120, GetScreenHeight() - 40, 20, BLUE);
+            }
+
+            if (IsKeyPressed(KEY_S)) {
+                images[fullViewIndex].selected = !images[fullViewIndex].selected;
+            }
+
             // Navigation
             if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_L)) {
                 int newIndex = (fullViewIndex + 1) % imageCount;
@@ -284,7 +313,13 @@ int main(void) {
 
             // Exit full screen view
             if (IsKeyPressed(KEY_ESCAPE) || GuiButton((Rectangle){ (float)GetScreenWidth() - 120, 40, 100, 30 }, "Back")) {
-                SaveSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR);
+                selectedFiles.clear();
+                for (int i = 0; i < imageCount; ++i) {
+                    if (images[i].selected) {
+                        selectedFiles.push_back(GetFileName(images[i].path));
+                    }
+                }
+                SaveSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR, selectedFiles);
                 for (int idx : {fullViewIndex, prevIndex, nextIndex}) {
                     if (images[idx].fullTextureLoaded) UnloadTexture(images[idx].fullTexture);
                     if (images[idx].fullLoaded) UnloadImage(images[idx].fullImage);
@@ -351,21 +386,25 @@ int main(void) {
                     Rectangle src = { 0, 0, (float)images[i].texture.width, (float)images[i].texture.height };
                     Rectangle dst = { tx, ty, w, h };
                     DrawTexturePro(images[i].texture, src, dst, {0,0}, 0, WHITE);
-                    DrawRectangleLines(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, GRAY);
+                    DrawRectangleLines(x, y, THUMBNAIL_SIZE, THUMBNAIL_SIZE, images[i].selected ? BLUE : GRAY);
 
                     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                         Vector2 mouse = GetMousePosition();
                         Rectangle r = {(float)x, (float)y, (float)THUMBNAIL_SIZE, (float)THUMBNAIL_SIZE};
                         if (CheckCollisionPointRec(mouse, r)) {
-                            Image img = LoadImage(images[i].path);
-                            if (img.data != NULL) {
-                                images[i].fullImage = img;
-                                images[i].fullLoaded = true;
-                                images[i].fullTexture = LoadTextureFromImage(img);
-                                images[i].fullTextureLoaded = true;
-                                inFullView = true;
-                                fullViewIndex = i;
-                                PreloadNeighbors(images, imageCount, i, prevIndex, nextIndex);
+                            if (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) || IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER)) {
+                                images[i].selected = !images[i].selected;
+                            } else {
+                                Image img = LoadImage(images[i].path);
+                                if (img.data != NULL) {
+                                    images[i].fullImage = img;
+                                    images[i].fullLoaded = true;
+                                    images[i].fullTexture = LoadTextureFromImage(img);
+                                    images[i].fullTextureLoaded = true;
+                                    inFullView = true;
+                                    fullViewIndex = i;
+                                    PreloadNeighbors(images, imageCount, i, prevIndex, nextIndex);
+                                }
                             }
                         }
                     }
@@ -384,7 +423,13 @@ int main(void) {
 
     CloseWindow();
 
-    SaveSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR);
+    selectedFiles.clear();
+    for (int i = 0; i < imageCount; ++i) {
+        if (images[i].selected) {
+            selectedFiles.push_back(GetFileName(images[i].path));
+        }
+    }
+    SaveSettings(folder, bufCanvasW, bufCanvasH, bufMarginT, bufMarginB, bufMarginL, bufMarginR, selectedFiles);
 
     return 0;
 }
