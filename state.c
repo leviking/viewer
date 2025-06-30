@@ -100,5 +100,6 @@ void InitializeState(State* state) {
     // Load folder first, then apply settings
     LoadFolder(state, state->folder);
     LoadSettings(state);
-    state->font = LoadFont("Lato-Regular.ttf");
+    // Load font with a higher resolution texture for crisp rendering at various sizes
+    state->font = LoadFontEx("futura_light.ttf", 20, 0, 0);
 }
