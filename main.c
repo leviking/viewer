@@ -165,7 +165,16 @@ int main(void) {
             //----------------------------------------------------------------------------------
             // Full-Screen View
             //----------------------------------------------------------------------------------
-            ClearBackground(BLACK);
+            ClearBackground(RAYWHITE);
+
+            // --- Title Bar ---
+            Rectangle titleBar = { 0, 0, (float)GetScreenWidth(), 50 };
+            DrawRectangleRec(titleBar, RAYWHITE);
+            DrawLine(0, (int)titleBar.height, GetScreenWidth(), (int)titleBar.height, LIGHTGRAY);
+
+            const char* filename = GetFileName(images[fullViewIndex].path);
+            int textSize = MeasureText(filename, 20);
+            DrawText(filename, (GetScreenWidth() - textSize) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
 
             // Parse canvas and margin values from strings to floats
             float canvasWidthIn = strtof(bufCanvasW, NULL);
@@ -183,15 +192,19 @@ int main(void) {
             int marginL = marginLeftIn * DPI;
             int marginR = marginRightIn * DPI;
 
-            // Scale canvas preview to fit on screen with padding
-            float screenPadding = 100.0f;
-            float scale = fminf((GetScreenWidth() - screenPadding) / (float)canvasPxW, (GetScreenHeight() - screenPadding) / (float)canvasPxH);
+            // Define content area to the right of the controls
+            float controls_width = 200;
+            Rectangle contentArea = { controls_width, titleBar.height, GetScreenWidth() - controls_width, GetScreenHeight() - titleBar.height };
+            float padding = 50.0f;
+
+            // Scale canvas preview to fit in the content area
+            float scale = fminf((contentArea.width - padding) / (float)canvasPxW, (contentArea.height - padding) / (float)canvasPxH);
             float dispW = canvasPxW * scale;
             float dispH = canvasPxH * scale;
 
-            // Center the canvas on the screen
-            float cx = (GetScreenWidth() - dispW) / 2.0f;
-            float cy = (GetScreenHeight() - dispH) / 2.0f;
+            // Center the canvas in the content area
+            float cx = contentArea.x + (contentArea.width - dispW) / 2.0f;
+            float cy = contentArea.y + (contentArea.height - dispH) / 2.0f;
 
             DrawRectangle(cx, cy, dispW, dispH, WHITE);
             DrawRectangleLinesEx((Rectangle){cx, cy, dispW, dispH}, 3, GRAY);
@@ -222,13 +235,9 @@ int main(void) {
             Rectangle dst = { cx + marginL_s, cy + marginT_s, drawW_s, drawH_s };
             DrawTexturePro(images[fullViewIndex].fullTexture, src, dst, (Vector2){0, 0}, 0, WHITE);
 
-            // Draw filename at top-center
-            const char* filename = GetFileName(images[fullViewIndex].path);
-            int textSize = MeasureText(filename, 20);
-            DrawText(filename, (GetScreenWidth() - textSize) / 2, 18, 20, WHITE);
-
             // --- UI Controls ---
-            int baseX = 20, baseY = 40, spacing = 40, inputW = 50, inputH = 25;
+            int total_controls_height = 140;
+            int baseX = 20, baseY = (GetScreenHeight() - total_controls_height) / 2, spacing = 40, inputW = 50, inputH = 25;
 
             // Deactivate textboxes on click outside
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -291,7 +300,7 @@ int main(void) {
             }
 
             // Exit full-screen view
-            if (IsKeyPressed(KEY_ESCAPE) || GuiButton((Rectangle){ (float)GetScreenWidth() - 120, 40, 100, 30 }, "Back")) {
+            if (IsKeyPressed(KEY_ESCAPE) || GuiButton((Rectangle){ (float)GetScreenWidth() - 120, (titleBar.height - 30) / 2, 100, 30 }, "Back")) {
                 // Update selected files list before exiting
                 selectedFileCount = 0;
                 for (int i = 0; i < imageCount; ++i) {
