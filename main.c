@@ -324,6 +324,11 @@ int main(void) {
             int dirNameWidth = MeasureText(dirName, 20);
             DrawText(dirName, (GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
 
+            // Draw folder name on title bar
+            const char* dirName = GetFileName(folder);
+            int dirNameWidth = MeasureText(dirName, 20);
+            DrawText(dirName, (GetScreenWidth() - dirNameWidth) / 2, (int)(titleBar.height - 20) / 2, 20, BLACK);
+
             // Draw "Generate PDF" button if images are selected
             int selectedCount = 0;
             for (int i = 0; i < imageCount; i++) {
