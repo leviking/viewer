@@ -29,10 +29,6 @@ void GetThumbPath(const char *folder, const char *filename, char *outPath) {
     snprintf(outPath, MAX_PATH_LEN, "%s/%s__thumb.png", thumbDir, filename);
 }
 
-bool FileExists(const char *path) {
-    return access(path, F_OK) != -1;
-}
-
 void LoadFolder(State* state, const char* folderPath) {
     DIR* dir = opendir(folderPath);
     if (!dir) return;

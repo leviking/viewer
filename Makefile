@@ -12,8 +12,8 @@ RAYLIB_CFLAGS = $(shell pkg-config --cflags raylib)
 RAYLIB_LIBS = $(shell pkg-config --libs raylib)
 
 # Compiler and linker flags
-CFLAGS = -I. $(RAYLIB_CFLAGS)
-LDFLAGS = $(RAYLIB_LIBS) -lm
+CFLAGS = -I. -Iraylib/src
+LDFLAGS = raylib/build/raylib/libraylib.a -lm -ldl -lpthread -lGL -lX11
 
 # Source files and objects
 SRCS = main.c ui.c state.c settings.c pdfgen.c tinyfiledialogs.c
